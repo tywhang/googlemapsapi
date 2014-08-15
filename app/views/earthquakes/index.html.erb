@@ -1,0 +1,141 @@
+<style>
+
+	html, body {
+		height: 100%;
+		margin: 0;
+	}
+
+	#map {
+		height: 100%;
+		margin: 0;
+	}
+</style>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
+<script>
+	$(document).ready(function() {
+		$('form').submit(function() {
+			$.get(
+				'https://maps.googleapis.com/maps/api/geocode/json',
+				$(this).serialize(),
+				function(data) {
+					var main = data.results[0].geometry.location
+					var coordinates = data.results[0].geometry.bounds
+					$.get(
+						'http://api.geonames.org/earthquakesJSON?',
+						'username=tywhang' + 
+						'&north=' + coordinates.northeast.lat + 
+						'&south=' + coordinates.southwest.lat + 
+						'&east=' + coordinates.northeast.lng + 
+						'&west=' + coordinates.southwest.lng,
+						function(data) {
+							var e = data.earthquakes
+
+							var mapOptions = {
+							    center: new google.maps.LatLng(main.lat, main.lng),
+							    zoom: 12,
+							    mapTypeId: google.maps.MapTypeId.ROADMAP
+							};
+							var map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+							var bounds = new google.maps.LatLngBounds();
+
+							for (var i = 0; i < e.length; i++) {
+								var point = new google.maps.LatLng(e[i].lat, e[i].lng);
+
+								bounds.extend(point);
+								
+								// bounds.extend(e[i].lat, e[i].lng)
+								var markerOptions = {
+								    position: new google.maps.LatLng(e[i].lat, e[i].lng),
+								    map: map
+								};
+
+								marker = new google.maps.Marker(markerOptions);
+								marker.setMap(map);
+								marker.html = '<p>Date/Time: ' + e[i].datetime + '</p>' +
+									'<p>Depth: ' + e[i].depth + '</p>' +
+									'<p>Latitute: ' + e[i].lat + '</p>' +
+									'<p>Longitude: ' + e[i].lng + '</p>' +
+									'<p>Magnitude: ' + e[i].magnitude + '</p>'
+
+								var infoWindowOptions = {
+								    content: 'Magnitude is: ' + e[i].magnitude
+								};
+
+								var infoWindow = new google.maps.InfoWindow(infoWindowOptions);
+								google.maps.event.addListener(marker, 'click', function(){
+									infoWindow.setContent(this.html)
+									infoWindow.open(map, this);
+								});
+							}
+							map.fitBounds(bounds)
+						},
+						'json'
+					)
+				},
+				'json'
+			)
+			return false;
+		})
+		
+		$.get(
+			'http://api.geonames.org/earthquakesJSON?',
+			'username=tywhang&north=-90&south=90&east=180&west=-180&maxRows=500',
+			function(data) {
+				var now = new Date()
+				now.setFullYear(now.getFullYear() - 2)
+				var count = 1
+				for (var i = 0; i < data.earthquakes.length; i++) {
+					if (count < 11) {
+						if (new Date(data.earthquakes[i].datetime) > now) {
+							console.log(data.earthquakes[i])
+							console.log(data.earthquakes[i].magnitude)
+							$('#top tbody').append('<tr>' + 
+													'<td>' + count + '</td>' +
+													'<td>' + data.earthquakes[i].datetime + '</td>' +
+													'<td>' + data.earthquakes[i].depth + '</td>' +
+													'<td>' + data.earthquakes[i].lat + '</td>' +
+													'<td>' + data.earthquakes[i].lng + '</td>' +
+													'<td>' + data.earthquakes[i].magnitude + '</td>' +
+												   '</tr>'
+								)
+							count++
+						}
+					}
+				}
+			},
+			'json'
+		)
+		
+
+		
+	})
+</script>
+
+<h1>Earthquakes#index</h1>
+
+<form>
+	Input a city or a location
+	<input type="text" name="address">
+	<input type="submit">
+</form>
+
+<div id="map"></div>
+
+<table id="top">
+	<h2>Top Earthquakes in the last 2 years</h2>
+	<thead>
+		<tr>
+			<th></th>
+			<th>Date/Time</th>
+			<th>Depth</th>
+			<th>Latitude</th>
+			<th>Longitude</th>
+			<th>Magnitude</th>
+		</tr>
+	</thead>
+	<tbody>
+		
+	</tbody>
+</table>
